@@ -172,6 +172,30 @@ def compute_features_fn(df_raw: DataFrame) -> DataFrame:
         .withColumn("streaming_cnt", (F.col("streaming_tv_flag") + F.col("streaming_movies_flag")).cast("int"))
     )
 
+
+    # --- NUEVAS FEATURES (2 columnas) --------------------------------
+    # total_services: cuenta de servicios activos (telefono + internet + add-ons).
+    # charge_per_service: cuanto paga el cliente por cada servicio que tiene
+ 
+    df = (
+        df
+        .withColumn(
+            "total_services",
+            (
+                F.col("phone_service_flag")
+                + F.col("has_internet")
+                + F.col("addon_services_cnt")
+            ).cast("int"),
+        )
+        .withColumn(
+            "charge_per_service",
+            (
+                F.col("monthly_charges")
+                / F.when(F.col("total_services") > 0, F.col("total_services")).otherwise(F.lit(1))
+            ).cast("double"),
+        )
+    )
+
     # --------------------------
     # 3) Contract / payments
     # --------------------------
@@ -296,6 +320,10 @@ def compute_features_fn(df_raw: DataFrame) -> DataFrame:
         "avg_monthly_charge_lifetime",
         "is_total_charges_missing",
         "abs_charges_gap",
+
+        # service usage summary (nuevas features)
+        "total_services",
+        "charge_per_service",
     ]
 
     return df.select(*feature_cols)
